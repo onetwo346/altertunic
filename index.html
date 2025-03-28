@@ -2,123 +2,391 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AlterTunic - AI Photo Editor</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2ecc71;
+            --background-color: #f4f4f8;
+            --text-color: #333;
+        }
+
+        * {
             margin: 0;
             padding: 0;
-            background-color: #f4f4f4;
+            box-sizing: border-box;
         }
-        header {
-            background: #333;
+
+        body, html {
+            height: 100%;
+            font-family: 'Arial', sans-serif;
+            overscroll-behavior: none;
+            background: var(--background-color);
+            touch-action: manipulation;
+        }
+
+        /* Intro Page Styles */
+        #intro {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            text-align: center;
             color: white;
-            padding: 20px;
+            transition: all 0.5s ease-in-out;
         }
-        main {
-            padding: 20px;
-        }
-        canvas {
-            border: 1px solid #ccc;
-            max-width: 100%;
-        }
-        .buttons {
-            margin-top: 10px;
-        }
-        button {
-            padding: 10px 15px;
-            margin: 5px;
-            border: none;
+
+        .pulse-container {
+            position: relative;
+            width: 200px;
+            height: 200px;
             cursor: pointer;
         }
-        button:hover {
-            background: #333;
-            color: white;
+
+        .pulse-button {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 150px;
+            height: 150px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
+            animation: pulse 2s infinite;
+            z-index: 10;
+        }
+
+        .pulse-button i {
+            font-size: 4rem;
+            color: var(--primary-color);
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: translate(-50%, -50%) scale(0.9);
+                box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
+            }
+            70% {
+                transform: translate(-50%, -50%) scale(1);
+                box-shadow: 0 0 0 30px rgba(255, 255, 255, 0);
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(0.9);
+                box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+            }
+        }
+
+        /* Editor Styles */
+        #editor {
+            display: none;
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: calc(100% - 120px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #f0f0f0;
+            overflow: hidden;
+        }
+
+        #main-canvas {
+            max-width: 100%;
+            max-height: 100%;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .toolbar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: white;
+            display: flex;
+            justify-content: space-around;
+            padding: 10px;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        }
+
+        .toolbar-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--text-color);
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .toolbar-btn:hover, .toolbar-btn.active {
+            color: var(--primary-color);
+        }
+
+        /* Modals */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1500;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80%;
+            overflow-y: auto;
+        }
+
+        /* Responsive Adjustments */
+        @media (max-width: 768px) {
+            .toolbar-btn {
+                font-size: 1.2rem;
+            }
         }
     </style>
 </head>
 <body>
-    <header>
-        <h1>AlterTunic</h1>
-        <p>Erase objects, change backgrounds, and edit your images easily!</p>
-    </header>
-    
-    <main>
-        <input type="file" id="upload" accept="image/*">
-        <canvas id="canvas"></canvas>
-        
-        <div class="buttons">
-            <button onclick="eraseObject()">Erase Object</button>
-            <button onclick="changeBackground()">Change Background</button>
-            <button onclick="downloadImage()">Download</button>
+    <!-- Intro Page -->
+    <div id="intro">
+        <div class="pulse-container">
+            <div class="pulse-button" onclick="startEditor()">
+                <i class="fas fa-magic"></i>
+            </div>
         </div>
-    </main>
+        <h1 style="margin-top: 20px; color: white;">AlterTunic</h1>
+        <p style="color: rgba(255,255,255,0.8);">Touch to Transform</p>
+    </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.2.4/fabric.min.js"></script>
+    <!-- Editor Page -->
+    <div id="editor">
+        <div id="canvas-container">
+            <canvas id="main-canvas"></canvas>
+        </div>
+
+        <div class="toolbar">
+            <button class="toolbar-btn" onclick="uploadImage()"><i class="fas fa-upload"></i></button>
+            <button class="toolbar-btn" onclick="openBrushTools()"><i class="fas fa-paint-brush"></i></button>
+            <button class="toolbar-btn" onclick="openFilters()"><i class="fas fa-filter"></i></button>
+            <button class="toolbar-btn" onclick="openAITools()"><i class="fas fa-robot"></i></button>
+            <button class="toolbar-btn" onclick="downloadImage()"><i class="fas fa-download"></i></button>
+        </div>
+    </div>
+
+    <!-- Brush Tools Modal -->
+    <div id="brush-modal" class="modal">
+        <div class="modal-content">
+            <h2>Brush Tools</h2>
+            <div>
+                <label>Brush Size</label>
+                <input type="range" id="brush-size" min="1" max="50" value="10">
+                <label>Brush Color</label>
+                <input type="color" id="brush-color">
+                <button onclick="startDrawing()">Draw</button>
+                <button onclick="startErasing()">Erase</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters Modal -->
+    <div id="filters-modal" class="modal">
+        <div class="modal-content">
+            <h2>Image Filters</h2>
+            <div>
+                <button onclick="applyFilter('grayscale')">Grayscale</button>
+                <button onclick="applyFilter('sepia')">Sepia</button>
+                <button onclick="applyFilter('invert')">Invert</button>
+                <button onclick="applyFilter('brightness')">Brightness</button>
+                <button onclick="applyFilter('contrast')">Contrast</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Tools Modal -->
+    <div id="ai-tools-modal" class="modal">
+        <div class="modal-content">
+            <h2>AI Editing Tools</h2>
+            <div>
+                <button onclick="removeBackground()">Remove Background</button>
+                <button onclick="enhanceImage()">Enhance Image</button>
+                <button onclick="objectRemoval()">Remove Object</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <script>
-        let canvas = new fabric.Canvas('canvas');
-        let imgElement = document.getElementById('upload');
+        // Global Variables
+        let canvas, currentMode = 'default';
 
-        imgElement.addEventListener('change', function (event) {
-            let reader = new FileReader();
-            reader.onload = function (e) {
-                let imgObj = new Image();
-                imgObj.src = e.target.result;
-                imgObj.onload = function () {
-                    let fabricImg = new fabric.Image(imgObj);
-                    fabricImg.scaleToWidth(500);
-                    canvas.setWidth(fabricImg.width);
-                    canvas.setHeight(fabricImg.height);
-                    canvas.add(fabricImg);
-                };
-            };
-            reader.readAsDataURL(event.target.files[0]);
-        });
+        // Initialization
+        function initCanvas() {
+            canvas = new fabric.Canvas('main-canvas', {
+                width: window.innerWidth,
+                height: window.innerHeight - 120,
+                backgroundColor: 'white'
+            });
+        }
 
-        function eraseObject() {
+        // Intro Page Interaction
+        function startEditor() {
+            document.getElementById('intro').style.opacity = 0;
+            setTimeout(() => {
+                document.getElementById('intro').style.display = 'none';
+                document.getElementById('editor').style.display = 'block';
+                initCanvas();
+            }, 500);
+        }
+
+        // Image Upload
+        function uploadImage() {
+            let input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = e => {
+                let file = e.target.files[0];
+                let reader = new FileReader();
+                reader.onload = function(event) {
+                    fabric.Image.fromURL(event.target.result, function(img) {
+                        // Scale image to fit canvas
+                        let scale = Math.min(
+                            canvas.width / img.width, 
+                            canvas.height / img.height
+                        );
+                        img.set({
+                            scaleX: scale,
+                            scaleY: scale
+                        });
+                        canvas.clear();
+                        canvas.add(img);
+                        canvas.centerObject(img);
+                        canvas.renderAll();
+                    });
+                }
+                reader.readAsDataURL(file);
+            }
+            input.click();
+        }
+
+        // Brush Tools
+        function openBrushTools() {
+            document.getElementById('brush-modal').style.display = 'flex';
+        }
+
+        function startDrawing() {
+            canvas.isDrawingMode = true;
+            canvas.freeDrawingBrush.width = document.getElementById('brush-size').value;
+            canvas.freeDrawingBrush.color = document.getElementById('brush-color').value;
+        }
+
+        function startErasing() {
+            canvas.isDrawingMode = true;
+            canvas.freeDrawingBrush.width = document.getElementById('brush-size').value;
+            canvas.freeDrawingBrush.color = 'white';
+        }
+
+        // Filters
+        function applyFilter(filterType) {
             let activeObject = canvas.getActiveObject();
-            if (activeObject) {
-                canvas.remove(activeObject);
-            } else {
-                alert("Select an object to erase.");
+            if (!activeObject) return;
+
+            switch(filterType) {
+                case 'grayscale':
+                    activeObject.filters.push(new fabric.Image.filters.Grayscale());
+                    break;
+                case 'sepia':
+                    activeObject.filters.push(new fabric.Image.filters.Sepia());
+                    break;
+                case 'invert':
+                    activeObject.filters.push(new fabric.Image.filters.Invert());
+                    break;
+                case 'brightness':
+                    activeObject.filters.push(new fabric.Image.filters.Brightness({ brightness: 0.1 }));
+                    break;
+                case 'contrast':
+                    activeObject.filters.push(new fabric.Image.filters.Contrast({ contrast: 0.2 }));
+                    break;
             }
+            activeObject.applyFilters();
+            canvas.renderAll();
         }
 
-        function changeBackground() {
-            let newBg = prompt("Enter background image URL:");
-            if (newBg) {
-                canvas.setBackgroundImage(newBg, canvas.renderAll.bind(canvas));
-            }
+        // AI Tools (Placeholder functions)
+        function removeBackground() {
+            alert('Background removal coming soon!');
         }
 
+        function enhanceImage() {
+            alert('Image enhancement coming soon!');
+        }
+
+        function objectRemoval() {
+            alert('AI object removal coming soon!');
+        }
+
+        // Download Image
         function downloadImage() {
-            let dataURL = canvas.toDataURL();
+            let dataURL = canvas.toDataURL({
+                format: 'png',
+                quality: 1
+            });
             let link = document.createElement('a');
+            link.download = 'AlterTunic_Image.png';
             link.href = dataURL;
-            link.download = 'edited_image.png';
             link.click();
         }
 
-        async function aiEraseObject() {
-            let dataURL = canvas.toDataURL("image/png");
-            
-            let response = await fetch("https://api.replicate.com/v1/predictions", {
-                method: "POST",
-                headers: {
-                    "Authorization": "Token YOUR_REPLICATE_API_KEY",
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    "version": "latest_model",
-                    "input": { "image": dataURL }
-                })
-            });
+        // Close Modals
+        window.onclick = function(event) {
+            let modals = document.getElementsByClassName('modal');
+            for (let modal of modals) {
+                if (event.target == modal) {
+                    modal.style.display = 'none';
+                }
+            }
+        }
 
-            let result = await response.json();
-            console.log(result);
-            alert("AI object removal will be processed. Check console for details.");
+        // Responsive Canvas
+        window.addEventListener('resize', function() {
+            if (canvas) {
+                canvas.setWidth(window.innerWidth);
+                canvas.setHeight(window.innerHeight - 120);
+                canvas.renderAll();
+            }
+        });
+
+        // Open AI Tools
+        function openAITools() {
+            document.getElementById('ai-tools-modal').style.display = 'flex';
+        }
+
+        // Open Filters
+        function openFilters() {
+            document.getElementById('filters-modal').style.display = 'flex';
         }
     </script>
 </body>
