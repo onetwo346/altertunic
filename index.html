@@ -201,6 +201,16 @@
             color: white;
         }
 
+        /* Slider Styles */
+        .slider-container {
+            margin: 15px 0;
+        }
+
+        .slider-container label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
         /* Responsive Adjustments */
         @media (max-width: 768px) {
             .toolbar-btn {
@@ -257,11 +267,13 @@
                     <i class="fas fa-eraser"></i> Erase
                 </button>
             </div>
-            <div>
-                <label>Brush Size</label>
-                <input type="range" id="brush-size" min="1" max="50" value="10">
-                <label>Brush Color</label>
-                <input type="color" id="brush-color">
+            <div class="slider-container">
+                <label for="brush-size">Brush Size: <span id="brush-size-value">10</span></label>
+                <input type="range" id="brush-size" min="1" max="50" value="10" oninput="updateBrushSize()">
+            </div>
+            <div class="slider-container">
+                <label for="brush-color">Brush Color</label>
+                <input type="color" id="brush-color" value="#000000" onchange="updateBrushColor()">
             </div>
         </div>
     </div>
@@ -321,14 +333,35 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <script>
         // Global Variables
-        let canvas, currentMode = 'default';
+        let canvas;
+        let currentMode = 'none'; // 'none', 'draw', 'erase'
+        let currentImage = null;
 
         // Initialization
         function initCanvas() {
             canvas = new fabric.Canvas('main-canvas', {
                 width: window.innerWidth,
                 height: window.innerHeight - 120,
-                backgroundColor: 'white'
+                backgroundColor: 'white',
+                isDrawingMode: false
+            });
+            
+            // Set default brush
+            canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+            canvas.freeDrawingBrush.width = 10;
+            canvas.freeDrawingBrush.color = '#000000';
+            
+            // Listen for object selection
+            canvas.on('object:added', function(e) {
+                if (e.target.type === 'image') {
+                    currentImage = e.target;
+                }
+            });
+            
+            canvas.on('object:selected', function(e) {
+                if (e.target.type === 'image') {
+                    currentImage = e.target;
+                }
             });
         }
 
@@ -345,8 +378,8 @@
         // Modal Management
         function closeModal(modalId) {
             document.getElementById(modalId).style.display = 'none';
-            // Reset canvas drawing mode
-            if (canvas) {
+            // Reset canvas drawing mode if not in brush mode
+            if (currentMode === 'none') {
                 canvas.isDrawingMode = false;
             }
         }
@@ -368,12 +401,14 @@
                         );
                         img.set({
                             scaleX: scale,
-                            scaleY: scale
+                            scaleY: scale,
+                            selectable: true
                         });
                         canvas.clear();
                         canvas.add(img);
                         canvas.centerObject(img);
                         canvas.renderAll();
+                        currentImage = img;
                     });
                 }
                 reader.readAsDataURL(file);
@@ -390,18 +425,46 @@
             
             // Open brush modal
             document.getElementById('brush-modal').style.display = 'flex';
+            
+            // Check if there's an image to edit
+            if (!currentImage) {
+                alert('Please upload an image first!');
+                closeModal('brush-modal');
+                return;
+            }
         }
 
         function startDrawing() {
+            currentMode = 'draw';
             canvas.isDrawingMode = true;
-            canvas.freeDrawingBrush.width = document.getElementById('brush-size').value;
+            canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+            canvas.freeDrawingBrush.width = parseInt(document.getElementById('brush-size').value);
             canvas.freeDrawingBrush.color = document.getElementById('brush-color').value;
+            canvas.freeDrawingBrush.globalCompositeOperation = 'source-over';
         }
 
         function startErasing() {
+            currentMode = 'erase';
             canvas.isDrawingMode = true;
-            canvas.freeDrawingBrush.width = document.getElementById('brush-size').value;
-            canvas.freeDrawingBrush.color = 'white';
+            canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+            canvas.freeDrawingBrush.width = parseInt(document.getElementById('brush-size').value);
+            canvas.freeDrawingBrush.color = 'rgba(0,0,0,1)'; // Color doesn't matter for erasing
+            canvas.freeDrawingBrush.globalCompositeOperation = 'destination-out';
+        }
+
+        function updateBrushSize() {
+            const size = document.getElementById('brush-size').value;
+            document.getElementById('brush-size-value').textContent = size;
+            if (canvas.isDrawingMode) {
+                canvas.freeDrawingBrush.width = parseInt(size);
+            }
+        }
+
+        function updateBrushColor() {
+            const color = document.getElementById('brush-color').value;
+            if (currentMode === 'draw' && canvas.isDrawingMode) {
+                canvas.freeDrawingBrush.color = color;
+            }
         }
 
         // Filters
@@ -413,36 +476,42 @@
             
             // Open filters modal
             document.getElementById('filters-modal').style.display = 'flex';
+            
+            // Check if there's an image to edit
+            if (!currentImage) {
+                alert('Please upload an image first!');
+                closeModal('filters-modal');
+                return;
+            }
         }
 
         function applyFilter(filterType) {
-            let activeObject = canvas.getActiveObject();
-            if (!activeObject) {
+            if (!currentImage) {
                 alert('Please select an image first!');
                 return;
             }
 
             // Clear previous filters
-            activeObject.filters = [];
+            currentImage.filters = [];
 
             switch(filterType) {
                 case 'grayscale':
-                    activeObject.filters.push(new fabric.Image.filters.Grayscale());
+                    currentImage.filters.push(new fabric.Image.filters.Grayscale());
                     break;
                 case 'sepia':
-                    activeObject.filters.push(new fabric.Image.filters.Sepia());
+                    currentImage.filters.push(new fabric.Image.filters.Sepia());
                     break;
                 case 'invert':
-                    activeObject.filters.push(new fabric.Image.filters.Invert());
+                    currentImage.filters.push(new fabric.Image.filters.Invert());
                     break;
                 case 'brightness':
-                    activeObject.filters.push(new fabric.Image.filters.Brightness({ brightness: 0.1 }));
+                    currentImage.filters.push(new fabric.Image.filters.Brightness({ brightness: 0.1 }));
                     break;
                 case 'contrast':
-                    activeObject.filters.push(new fabric.Image.filters.Contrast({ contrast: 0.2 }));
+                    currentImage.filters.push(new fabric.Image.filters.Contrast({ contrast: 0.2 }));
                     break;
             }
-            activeObject.applyFilters();
+            currentImage.applyFilters();
             canvas.renderAll();
         }
 
@@ -455,6 +524,13 @@
             
             // Open AI tools modal
             document.getElementById('ai-tools-modal').style.display = 'flex';
+            
+            // Check if there's an image to edit
+            if (!currentImage) {
+                alert('Please upload an image first!');
+                closeModal('ai-tools-modal');
+                return;
+            }
         }
 
         // AI Tools (Placeholder functions)
@@ -472,6 +548,11 @@
 
         // Download Image
         function downloadImage() {
+            if (canvas.getObjects().length === 0) {
+                alert('No image to download!');
+                return;
+            }
+            
             let dataURL = canvas.toDataURL({
                 format: 'png',
                 quality: 1
@@ -488,8 +569,8 @@
             for (let modal of modals) {
                 if (event.target == modal) {
                     modal.style.display = 'none';
-                    // Reset canvas drawing mode
-                    if (canvas) {
+                    // Reset canvas drawing mode if not in brush mode
+                    if (currentMode === 'none') {
                         canvas.isDrawingMode = false;
                     }
                 }
