@@ -160,12 +160,55 @@
             max-width: 500px;
             max-height: 80%;
             overflow-y: auto;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--text-color);
+            cursor: pointer;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .modal-tools {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 10px;
+        }
+
+        .modal-tools button {
+            padding: 10px;
+            background-color: var(--background-color);
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .modal-tools button:hover {
+            background-color: var(--primary-color);
+            color: white;
         }
 
         /* Responsive Adjustments */
         @media (max-width: 768px) {
             .toolbar-btn {
                 font-size: 1.2rem;
+            }
+
+            .modal-tools {
+                grid-template-columns: repeat(2, 1fr);
             }
         }
     </style>
@@ -200,14 +243,25 @@
     <!-- Brush Tools Modal -->
     <div id="brush-modal" class="modal">
         <div class="modal-content">
-            <h2>Brush Tools</h2>
+            <div class="modal-header">
+                <h2>Brush Tools</h2>
+                <button class="modal-close" onclick="closeModal('brush-modal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-tools">
+                <button onclick="startDrawing()">
+                    <i class="fas fa-pencil-alt"></i> Draw
+                </button>
+                <button onclick="startErasing()">
+                    <i class="fas fa-eraser"></i> Erase
+                </button>
+            </div>
             <div>
                 <label>Brush Size</label>
                 <input type="range" id="brush-size" min="1" max="50" value="10">
                 <label>Brush Color</label>
                 <input type="color" id="brush-color">
-                <button onclick="startDrawing()">Draw</button>
-                <button onclick="startErasing()">Erase</button>
             </div>
         </div>
     </div>
@@ -215,13 +269,28 @@
     <!-- Filters Modal -->
     <div id="filters-modal" class="modal">
         <div class="modal-content">
-            <h2>Image Filters</h2>
-            <div>
-                <button onclick="applyFilter('grayscale')">Grayscale</button>
-                <button onclick="applyFilter('sepia')">Sepia</button>
-                <button onclick="applyFilter('invert')">Invert</button>
-                <button onclick="applyFilter('brightness')">Brightness</button>
-                <button onclick="applyFilter('contrast')">Contrast</button>
+            <div class="modal-header">
+                <h2>Image Filters</h2>
+                <button class="modal-close" onclick="closeModal('filters-modal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-tools">
+                <button onclick="applyFilter('grayscale')">
+                    <i class="fas fa-adjust"></i> Grayscale
+                </button>
+                <button onclick="applyFilter('sepia')">
+                    <i class="fas fa-image"></i> Sepia
+                </button>
+                <button onclick="applyFilter('invert')">
+                    <i class="fas fa-adjust"></i> Invert
+                </button>
+                <button onclick="applyFilter('brightness')">
+                    <i class="fas fa-sun"></i> Brightness
+                </button>
+                <button onclick="applyFilter('contrast')">
+                    <i class="fas fa-adjust"></i> Contrast
+                </button>
             </div>
         </div>
     </div>
@@ -229,11 +298,22 @@
     <!-- AI Tools Modal -->
     <div id="ai-tools-modal" class="modal">
         <div class="modal-content">
-            <h2>AI Editing Tools</h2>
-            <div>
-                <button onclick="removeBackground()">Remove Background</button>
-                <button onclick="enhanceImage()">Enhance Image</button>
-                <button onclick="objectRemoval()">Remove Object</button>
+            <div class="modal-header">
+                <h2>AI Editing Tools</h2>
+                <button class="modal-close" onclick="closeModal('ai-tools-modal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-tools">
+                <button onclick="removeBackground()">
+                    <i class="fas fa-mountain"></i> Remove Background
+                </button>
+                <button onclick="enhanceImage()">
+                    <i class="fas fa-magic"></i> Enhance Image
+                </button>
+                <button onclick="objectRemoval()">
+                    <i class="fas fa-trash"></i> Remove Object
+                </button>
             </div>
         </div>
     </div>
@@ -260,6 +340,15 @@
                 document.getElementById('editor').style.display = 'block';
                 initCanvas();
             }, 500);
+        }
+
+        // Modal Management
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+            // Reset canvas drawing mode
+            if (canvas) {
+                canvas.isDrawingMode = false;
+            }
         }
 
         // Image Upload
@@ -294,6 +383,12 @@
 
         // Brush Tools
         function openBrushTools() {
+            // Close any open modals first
+            ['brush-modal', 'filters-modal', 'ai-tools-modal'].forEach(modalId => {
+                document.getElementById(modalId).style.display = 'none';
+            });
+            
+            // Open brush modal
             document.getElementById('brush-modal').style.display = 'flex';
         }
 
@@ -310,9 +405,25 @@
         }
 
         // Filters
+        function openFilters() {
+            // Close any open modals first
+            ['brush-modal', 'filters-modal', 'ai-tools-modal'].forEach(modalId => {
+                document.getElementById(modalId).style.display = 'none';
+            });
+            
+            // Open filters modal
+            document.getElementById('filters-modal').style.display = 'flex';
+        }
+
         function applyFilter(filterType) {
             let activeObject = canvas.getActiveObject();
-            if (!activeObject) return;
+            if (!activeObject) {
+                alert('Please select an image first!');
+                return;
+            }
+
+            // Clear previous filters
+            activeObject.filters = [];
 
             switch(filterType) {
                 case 'grayscale':
@@ -333,6 +444,17 @@
             }
             activeObject.applyFilters();
             canvas.renderAll();
+        }
+
+        // AI Tools
+        function openAITools() {
+            // Close any open modals first
+            ['brush-modal', 'filters-modal', 'ai-tools-modal'].forEach(modalId => {
+                document.getElementById(modalId).style.display = 'none';
+            });
+            
+            // Open AI tools modal
+            document.getElementById('ai-tools-modal').style.display = 'flex';
         }
 
         // AI Tools (Placeholder functions)
@@ -366,6 +488,10 @@
             for (let modal of modals) {
                 if (event.target == modal) {
                     modal.style.display = 'none';
+                    // Reset canvas drawing mode
+                    if (canvas) {
+                        canvas.isDrawingMode = false;
+                    }
                 }
             }
         }
@@ -378,16 +504,6 @@
                 canvas.renderAll();
             }
         });
-
-        // Open AI Tools
-        function openAITools() {
-            document.getElementById('ai-tools-modal').style.display = 'flex';
-        }
-
-        // Open Filters
-        function openFilters() {
-            document.getElementById('filters-modal').style.display = 'flex';
-        }
     </script>
 </body>
 </html>
