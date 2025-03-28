@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AlterTunic - AI Photo Editor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        header {
+            background: #333;
+            color: white;
+            padding: 20px;
+        }
+        main {
+            padding: 20px;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            max-width: 100%;
+        }
+        .buttons {
+            margin-top: 10px;
+        }
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #333;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>AlterTunic</h1>
+        <p>Erase objects, change backgrounds, and edit your images easily!</p>
+    </header>
+    
+    <main>
+        <input type="file" id="upload" accept="image/*">
+        <canvas id="canvas"></canvas>
+        
+        <div class="buttons">
+            <button onclick="eraseObject()">Erase Object</button>
+            <button onclick="changeBackground()">Change Background</button>
+            <button onclick="downloadImage()">Download</button>
+        </div>
+    </main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.2.4/fabric.min.js"></script>
+    <script>
+        let canvas = new fabric.Canvas('canvas');
+        let imgElement = document.getElementById('upload');
+
+        imgElement.addEventListener('change', function (event) {
+            let reader = new FileReader();
+            reader.onload = function (e) {
+                let imgObj = new Image();
+                imgObj.src = e.target.result;
+                imgObj.onload = function () {
+                    let fabricImg = new fabric.Image(imgObj);
+                    fabricImg.scaleToWidth(500);
+                    canvas.setWidth(fabricImg.width);
+                    canvas.setHeight(fabricImg.height);
+                    canvas.add(fabricImg);
+                };
+            };
+            reader.readAsDataURL(event.target.files[0]);
+        });
+
+        function eraseObject() {
+            let activeObject = canvas.getActiveObject();
+            if (activeObject) {
+                canvas.remove(activeObject);
+            } else {
+                alert("Select an object to erase.");
+            }
+        }
+
+        function changeBackground() {
+            let newBg = prompt("Enter background image URL:");
+            if (newBg) {
+                canvas.setBackgroundImage(newBg, canvas.renderAll.bind(canvas));
+            }
+        }
+
+        function downloadImage() {
+            let dataURL = canvas.toDataURL();
+            let link = document.createElement('a');
+            link.href = dataURL;
+            link.download = 'edited_image.png';
+            link.click();
+        }
+
+        async function aiEraseObject() {
+            let dataURL = canvas.toDataURL("image/png");
+            
+            let response = await fetch("https://api.replicate.com/v1/predictions", {
+                method: "POST",
+                headers: {
+                    "Authorization": "Token YOUR_REPLICATE_API_KEY",
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    "version": "latest_model",
+                    "input": { "image": dataURL }
+                })
+            });
+
+            let result = await response.json();
+            console.log(result);
+            alert("AI object removal will be processed. Check console for details.");
+        }
+    </script>
+</body>
+</html>
